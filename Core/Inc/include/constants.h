@@ -1,18 +1,17 @@
 #pragma once
 
-#include <type_traits>
+/* Cell voltage status values */
+#define kCellVoltageErrorMinMv 2800U
+#define kCellVoltageWarningMinMv 3100U
+#define kCellVoltageGoodMaxMv 4150U
+#define kCellVoltageWarningMaxMv 4200
 
-namespace Constants
-{
-    /* Cell voltage status values */
-    constexpr uint16_t kCellVoltageErrorMinMv 2800;
-    constexpr uint16_t kCellVoltageWarningMinMv 3100;
-    constexpr uint16_t kCellVoltageGoodMaxMv 4150;
-    constexpr uint16_t kCellVoltageWarningMaxMv 4200;
+/* Cell temperature status values */
+#define kCellTempWarningMinC 5.0
+#define kCellGoodMaxC = 50.0f
+#define kCellTempWarningMaxC = 60.0f
 
-    /* Cell temperature status values */
-    constexpr float kCellTempWarningMinC 5.0f;
-    constexpr float kCellGoodMaxC = 50.0f;
-    constexpr float kCellTempWarningMaxC 60.0f;
-
-}
+/* Cell module data */
+#define kModuleCount 9U
+#define kCellsPerModule 12U
+#define kThermistorsPerModule 7U

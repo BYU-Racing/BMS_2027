@@ -5,5 +5,5 @@
   "device": "STM32G474RET3",
   "core": "Cortex-M4",
   "order": 0,
-  "toolchain": "GCC"
+  "toolchain": "CLANG"
 }

@@ -63,12 +63,10 @@ void Error_Handler(void);
 #define DIG_OUT_0_GPIO_Port GPIOA
 #define DIG_OUT_1_Pin GPIO_PIN_1
 #define DIG_OUT_1_GPIO_Port GPIOA
-#define DIG_OUT_2_Pin GPIO_PIN_2
-#define DIG_OUT_2_GPIO_Port GPIOA
 #define DIG_OUT_3_Pin GPIO_PIN_4
 #define DIG_OUT_3_GPIO_Port GPIOA
-#define DIG_OUT_4_Pin GPIO_PIN_5
-#define DIG_OUT_4_GPIO_Port GPIOA
+#define LED_Pin GPIO_PIN_5
+#define LED_GPIO_Port GPIOA
 #define DIG_OUT_5_Pin GPIO_PIN_10
 #define DIG_OUT_5_GPIO_Port GPIOA
 #define DIG_OUT_6_Pin GPIO_PIN_15
