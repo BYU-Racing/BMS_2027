@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "stm32g4xx_hal_gpio.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -27,6 +26,7 @@
 
 #include "usbd_cdc_if.h"
 #include "include/can_utils.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -122,13 +122,6 @@ int main(void)
   MX_SPI2_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-
-  /* redirect printf() to USB CDC */
-  int _write(int file, char *ptr, int len) 
-  {
-    CDC_Transmit_FS((uint8_t *)ptr, len);
-    return len;
-  }
 
   /* USER CODE END 2 */
 
@@ -309,10 +302,10 @@ static void MX_FDCAN2_Init(void)
   hfdcan2.Init.AutoRetransmission = DISABLE;
   hfdcan2.Init.TransmitPause = DISABLE;
   hfdcan2.Init.ProtocolException = DISABLE;
-  hfdcan2.Init.NominalPrescaler = 16;
+  hfdcan2.Init.NominalPrescaler = 34;
   hfdcan2.Init.NominalSyncJumpWidth = 1;
-  hfdcan2.Init.NominalTimeSeg1 = 1;
-  hfdcan2.Init.NominalTimeSeg2 = 1;
+  hfdcan2.Init.NominalTimeSeg1 = 16;
+  hfdcan2.Init.NominalTimeSeg2 = 3;
   hfdcan2.Init.DataPrescaler = 1;
   hfdcan2.Init.DataSyncJumpWidth = 1;
   hfdcan2.Init.DataTimeSeg1 = 1;
@@ -538,9 +531,9 @@ void StartControlTask(void const * argument)
   /* init code for USB_Device */
   MX_USB_Device_Init();
   /* USER CODE BEGIN 5 */
-
+ 
   /* Task frequency in ms*/
-  const TickType_t xFrequencyMs = 500;
+  const TickType_t xFrequencyMs = 1000;
 
   /* Initialise the xLastWakeTime variable with the current time. */
   TickType_t xLastWakeTime;
@@ -549,14 +542,13 @@ void StartControlTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+
     /* Serial Debugging */
     uint8_t msg[] = "serial debug is working through USB...\r\n";
     CDC_Transmit_FS(msg, sizeof(msg) - 1);
 
-    /* test the LEDs */
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
-                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
-                                  GPIO_PIN_15);
+    /* Toggle LED */
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
     vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
   }
@@ -591,10 +583,35 @@ void StartTaskDataAcquisition(void const * argument)
 void StartTaskDataLogging(void const * argument)
 {
   /* USER CODE BEGIN StartTaskDataLogging */
+
+  /* Task frequency in ms*/
+  const TickType_t xFrequencyMs = 20;
+
+  /* Initialise the xLastWakeTime variable with the current time. */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+
+  /* init CAN data frame for testing */
+  FDCAN_TxHeaderTypeDef msgHeader;
+  uint8_t msgData[8] = {1,0,0,0,0,0,0,0};
+
+  msgHeader.Identifier = 0x009F;
+  msgHeader.IdType = FDCAN_STANDARD_ID;
+  msgHeader.TxFrameType = FDCAN_DATA_FRAME;
+  msgHeader.DataLength = FDCAN_DLC_BYTES_8;
+  msgHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  msgHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  msgHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  msgHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  msgHeader.MessageMarker = 0;
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    /* send CAN msg */
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &msgHeader, msgData);
+
+    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
   }
   /* USER CODE END StartTaskDataLogging */
 }
@@ -632,6 +649,13 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    uint8_t msg[] = "An error has occurred\r\n";
+    CDC_Transmit_FS(msg, sizeof(msg) - 1);
+
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
+                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
+                                  GPIO_PIN_15);
+    HAL_Delay(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }
