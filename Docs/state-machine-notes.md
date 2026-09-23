@@ -179,11 +179,58 @@ case is now about as thoroughly tested as a single state can be.
 Grouped `main`'s calls under a `//IDLE state tests` comment — will need a
 matching comment per state as Ready/Running/Charging/Fault tests get added.
 
+### CI added
+
+`.github/workflows/build.yml`: runs on every push to `main` and every PR.
+Installs the real `arm-none-eabi-gcc` toolchain + `ninja`, then runs
+`cmake --preset Debug` / `cmake --build --preset Debug` — the project's own
+existing preset, not a workaround. This is the real embedded build, not the
+host-side `cc` checks used locally — catches anything that breaks the actual
+firmware, for anyone's code, not just mine.
+
 ### Next: Ready, Running, Charging, Fault, and the retry timer
 
 Still need: Ready's other two branches (→ Charging, → Fault), Running/Charging
 → Fault, Fault → Idle on reset, and the retry-timer countdown (does it
 actually decrement, and reset back to 10 after hitting 0).
+
+### Ready fully covered
+
+Five tests: → Charging, → Running, and three Fault variants (both readings
+bad, voltage bad alone, temp bad alone) — same rigor as Idle's sensor checks,
+applied to Ready's `voltagesGood && tempsGood` condition. Also scaffolded empty
+`//RUNNING`, `//CHARGING`, `//FAULT` section headers in `main` ahead of writing
+those tests. 18 tests total, all passing.
+
+State-machine branch got merged into `main` mid-session (PR #3), then a second
+PR (#5) added the CI workflow and merged `hardware_test`'s FreeRTOS changes
+back in — real embedded build passed on GitHub Actions, not just the host-side
+`cc` checks used locally.
+
+### Running and Charging fully covered
+
+Six tests, same shape as each other since both states check the same
+`voltagesGood && tempsGood` condition with no other branching: stays in state
+when good, Fault when either reading is bad. 24 tests total, all passing.
+
+### Fault fully covered — all five states now tested
+
+Two tests: → Idle on `resetRequested`, and stays Fault when not requested. The
+second one matters most — it's the test that actually proves the latching
+rule (rules require the shutdown circuit stay open until a manual reset;
+nothing else may clear it).
+
+**26 tests total, all passing. Every state's transitions are now covered.**
+
+Not yet committed/pushed — sitting locally on `state-machine`.
+
+### Next
+
+- Commit and push the finished test suite.
+- Wire `Control_Step` into the real `ControlTask` in `main.c`, on a 10ms
+  period, with placeholder inputs (real sensor data still depends on someone
+  building the Data Acquisition Thread's driver).
+- Raise the open questions above with the team.
 
 ## C syntax notes
 
