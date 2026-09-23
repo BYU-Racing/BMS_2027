@@ -550,6 +550,8 @@ void StartControlTask(void const * argument)
     /* Toggle LED */
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
+    /* TODO Read CAN bus msg */
+
     vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
   }
   /* USER CODE END 5 */
