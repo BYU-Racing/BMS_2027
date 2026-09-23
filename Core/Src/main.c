@@ -18,13 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
 #include "usbd_cdc_if.h"
-#include "include/can_utils.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -53,10 +54,11 @@ QSPI_HandleTypeDef hqspi1;
 
 SPI_HandleTypeDef hspi2;
 
-TIM_HandleTypeDef htim2;
-
 UART_HandleTypeDef huart5;
 
+osThreadId ControlTaskHandle;
+osThreadId DataAcquisitionHandle;
+osThreadId DataLoggingHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -68,8 +70,11 @@ static void MX_FDCAN1_Init(void);
 static void MX_FDCAN2_Init(void);
 static void MX_QUADSPI1_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_UART5_Init(void);
+void StartControlTask(void const * argument);
+void StartTaskDataAcquisition(void const * argument);
+void StartTaskDataLogging(void const * argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -112,21 +117,50 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
-  MX_USB_Device_Init();
   MX_QUADSPI1_Init();
   MX_SPI2_Init();
-  MX_TIM2_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
 
-  /* redirect printf() to USB CDC */
-  int _write(int file, char *ptr, int len) 
-  {
-    CDC_Transmit_FS((uint8_t *)ptr, len);
-    return len;
-  }
-
   /* USER CODE END 2 */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* definition and creation of ControlTask */
+  osThreadDef(ControlTask, StartControlTask, osPriorityHigh, 0, 128);
+  ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
+
+  /* definition and creation of DataAcquisition */
+  osThreadDef(DataAcquisition, StartTaskDataAcquisition, osPriorityNormal, 0, 128);
+  DataAcquisitionHandle = osThreadCreate(osThread(DataAcquisition), NULL);
+
+  /* definition and creation of DataLogging */
+  osThreadDef(DataLogging, StartTaskDataLogging, osPriorityLow, 0, 128);
+  DataLoggingHandle = osThreadCreate(osThread(DataLogging), NULL);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -135,11 +169,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-    HAL_Delay(1000);
-    // printf("Working...\r\n");
-    uint8_t msg[] = "Hello\r\n";
-    CDC_Transmit_FS(msg, sizeof(msg) - 1);
   } 
   /* USER CODE END 3 */
 }
@@ -272,10 +301,10 @@ static void MX_FDCAN2_Init(void)
   hfdcan2.Init.AutoRetransmission = DISABLE;
   hfdcan2.Init.TransmitPause = DISABLE;
   hfdcan2.Init.ProtocolException = DISABLE;
-  hfdcan2.Init.NominalPrescaler = 16;
+  hfdcan2.Init.NominalPrescaler = 34;
   hfdcan2.Init.NominalSyncJumpWidth = 1;
-  hfdcan2.Init.NominalTimeSeg1 = 1;
-  hfdcan2.Init.NominalTimeSeg2 = 1;
+  hfdcan2.Init.NominalTimeSeg1 = 16;
+  hfdcan2.Init.NominalTimeSeg2 = 3;
   hfdcan2.Init.DataPrescaler = 1;
   hfdcan2.Init.DataSyncJumpWidth = 1;
   hfdcan2.Init.DataTimeSeg1 = 1;
@@ -380,51 +409,6 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
-
-}
-
-/**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 169;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 49999;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
 
 }
 
@@ -534,6 +518,127 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
+/* USER CODE BEGIN Header_StartControlTask */
+/**
+  * @brief  Function implementing the ControlTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartControlTask */
+void StartControlTask(void const * argument)
+{
+  /* init code for USB_Device */
+  MX_USB_Device_Init();
+  /* USER CODE BEGIN 5 */
+ 
+  /* Task frequency in ms*/
+  const TickType_t xFrequencyMs = 1000;
+
+  /* Initialise the xLastWakeTime variable with the current time. */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+
+  /* Infinite loop */
+  for(;;)
+  {
+
+    /* Serial Debugging */
+    uint8_t msg[] = "serial debug is working through USB...\r\n";
+    CDC_Transmit_FS(msg, sizeof(msg) - 1);
+
+    /* Toggle LED */
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
+
+    /* TODO Read CAN bus msg */
+
+    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartTaskDataAcquisition */
+/**
+* @brief Function implementing the DataAcquisition thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskDataAcquisition */
+void StartTaskDataAcquisition(void const * argument)
+{
+  /* USER CODE BEGIN StartTaskDataAcquisition */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTaskDataAcquisition */
+}
+
+/* USER CODE BEGIN Header_StartTaskDataLogging */
+/**
+* @brief Function implementing the DataLogging thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskDataLogging */
+void StartTaskDataLogging(void const * argument)
+{
+  /* USER CODE BEGIN StartTaskDataLogging */
+
+  /* Task frequency in ms*/
+  const TickType_t xFrequencyMs = 20;
+
+  /* Initialise the xLastWakeTime variable with the current time. */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+
+  /* init CAN data frame for testing */
+  FDCAN_TxHeaderTypeDef msgHeader;
+  uint8_t msgData[8] = {1,0,0,0,0,0,0,0};
+
+  msgHeader.Identifier = 0x009F;
+  msgHeader.IdType = FDCAN_STANDARD_ID;
+  msgHeader.TxFrameType = FDCAN_DATA_FRAME;
+  msgHeader.DataLength = FDCAN_DLC_BYTES_8;
+  msgHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  msgHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  msgHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  msgHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  msgHeader.MessageMarker = 0;
+
+  /* Infinite loop */
+  for(;;)
+  {
+    /* send CAN msg */
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &msgHeader, msgData);
+
+    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
+  }
+  /* USER CODE END StartTaskDataLogging */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM6 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM6)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
+
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
@@ -545,6 +650,13 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    uint8_t msg[] = "An error has occurred\r\n";
+    CDC_Transmit_FS(msg, sizeof(msg) - 1);
+
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
+                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
+                                  GPIO_PIN_15);
+    HAL_Delay(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }
