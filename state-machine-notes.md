@@ -179,6 +179,15 @@ case is now about as thoroughly tested as a single state can be.
 Grouped `main`'s calls under a `//IDLE state tests` comment — will need a
 matching comment per state as Ready/Running/Charging/Fault tests get added.
 
+### CI added
+
+`.github/workflows/build.yml`: runs on every push to `main` and every PR.
+Installs the real `arm-none-eabi-gcc` toolchain + `ninja`, then runs
+`cmake --preset Debug` / `cmake --build --preset Debug` — the project's own
+existing preset, not a workaround. This is the real embedded build, not the
+host-side `cc` checks used locally — catches anything that breaks the actual
+firmware, for anyone's code, not just mine.
+
 ### Next: Ready, Running, Charging, Fault, and the retry timer
 
 Still need: Ready's other two branches (→ Charging, → Fault), Running/Charging
