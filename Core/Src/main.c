@@ -25,7 +25,6 @@
 /* USER CODE BEGIN Includes */
 
 #include "usbd_cdc_if.h"
-#include "include/can_utils.h"
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
