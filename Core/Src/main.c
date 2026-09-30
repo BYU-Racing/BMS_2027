@@ -19,15 +19,18 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "stm32g4xx_hal.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "include/control.h"
+#include "include/spi_utils.h"
 #include "usbd_cdc_if.h"
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -59,6 +62,7 @@ UART_HandleTypeDef huart5;
 osThreadId ControlTaskHandle;
 osThreadId DataAcquisitionHandle;
 osThreadId DataLoggingHandle;
+osThreadId ErrorStateHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -74,6 +78,7 @@ static void MX_UART5_Init(void);
 void StartControlTask(void const * argument);
 void StartTaskDataAcquisition(void const * argument);
 void StartTaskDataLogging(void const * argument);
+void StartErrorState(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -81,8 +86,6 @@ void StartTaskDataLogging(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-volatile bool can_msg_received = false;
 
 /* USER CODE END 0 */
 
@@ -153,8 +156,28 @@ int main(void)
   osThreadDef(DataLogging, StartTaskDataLogging, osPriorityLow, 0, 128);
   DataLoggingHandle = osThreadCreate(osThread(DataLogging), NULL);
 
+  /* definition and creation of ErrorState */
+  osThreadDef(ErrorState, StartErrorState, osPriorityIdle, 0, 128);
+  ErrorStateHandle = osThreadCreate(osThread(ErrorState), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  /* TEST SPI */
+  // for(;;)
+  // {
+  //   ltc_spi_selftest();
+  //   HAL_Delay(50);
+  // }
+
+  // uint8_t cmd[4];
+  // ltc_send_cmd(CMD_WRCFGA, cmd);
+
+  // if (spi_test != 0)
+  // {
+  //   Error_Handler();
+  // }
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -391,17 +414,17 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi2.Init.CRCPolynomial = 7;
   hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
@@ -484,6 +507,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_2_Pin|DIG_OUT_3_Pin
                           |DIG_OUT_4_Pin|DIG_OUT_5_Pin|DIG_OUT_6_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LTC_CS_GPIO_Port, LTC_CS_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : PG10 */
   GPIO_InitStruct.Pin = GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -509,6 +535,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : LTC_CS_Pin */
+  GPIO_InitStruct.Pin = LTC_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LTC_CS_GPIO_Port, &GPIO_InitStruct);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
@@ -532,7 +565,7 @@ void StartControlTask(void const * argument)
   /* USER CODE BEGIN 5 */
  
   /* Task frequency in ms*/
-  const TickType_t xFrequencyMs = 1000;
+  const TickType_t xFrequencyMs = 500;
 
   /* Initialise the xLastWakeTime variable with the current time. */
   TickType_t xLastWakeTime;
@@ -541,7 +574,6 @@ void StartControlTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-
     /* Serial Debugging */
     uint8_t msg[] = "serial debug is working through USB...\r\n";
     CDC_Transmit_FS(msg, sizeof(msg) - 1);
@@ -566,6 +598,7 @@ void StartControlTask(void const * argument)
 void StartTaskDataAcquisition(void const * argument)
 {
   /* USER CODE BEGIN StartTaskDataAcquisition */
+
   /* Infinite loop */
   for(;;)
   {
@@ -617,6 +650,24 @@ void StartTaskDataLogging(void const * argument)
   /* USER CODE END StartTaskDataLogging */
 }
 
+/* USER CODE BEGIN Header_StartErrorState */
+/**
+* @brief Function implementing the ErrorState thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartErrorState */
+void StartErrorState(void const * argument)
+{
+  /* USER CODE BEGIN StartErrorState */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartErrorState */
+}
+
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
@@ -648,15 +699,16 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
-    uint8_t msg[] = "An error has occurred\r\n";
-    CDC_Transmit_FS(msg, sizeof(msg) - 1);
 
+  /* stop scheduler from swithcing tasks */
+  taskDISABLE_INTERRUPTS();
+
+  for (;;)
+  {
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
                                   GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
                                   GPIO_PIN_15);
-    HAL_Delay(500);
+    osDelay(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }
