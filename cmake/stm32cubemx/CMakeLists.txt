@@ -39,7 +39,7 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/syscalls.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../startup_stm32g474xx.s
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/control.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/spi_utils.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/ltc6811.c
 )
 
 # STM32 HAL/LL Drivers

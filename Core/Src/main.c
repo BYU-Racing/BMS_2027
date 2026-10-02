@@ -20,13 +20,15 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_hal_gpio.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
 #include "include/control.h"
-#include "include/spi_utils.h"
+#include "include/ltc6811.h"
+// #include "include/spi_utils.h"
 #include "usbd_cdc_if.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -415,7 +417,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
   hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
   hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
   hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
@@ -574,10 +576,6 @@ void StartControlTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    /* Serial Debugging */
-    uint8_t msg[] = "serial debug is working through USB...\r\n";
-    CDC_Transmit_FS(msg, sizeof(msg) - 1);
-
     /* Toggle LED */
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
@@ -599,10 +597,36 @@ void StartTaskDataAcquisition(void const * argument)
 {
   /* USER CODE BEGIN StartTaskDataAcquisition */
 
+  /* Task frequency in ms*/
+  const TickType_t xFrequencyMs = 20;
+
+  /* Initialise the xLastWakeTime variable with the current time. */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+
+  /* init itc6811 driver */
+  ltc6811_t g_ltc;
+
+  if (ltc6811_init(&g_ltc, &hspi2, LTC_CS_GPIO_Port, LTC_CS_Pin, 9) !=
+      LTC6811_OK) 
+  {
+    Error_Handler();
+  }
+
+  ltc6811_selftest_cells(&g_ltc);
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // ltc6811_cmd(&g_ltc, LTC6811_ADCV(MD_7KHZ, 0, 0));
+
+    // ltc6811_write_group(LTC6811_WRCFGA);
+
+    ltc6811_cmd(&g_ltc, LTC6811_ADCV(LTC6811_MD_7KHZ, 0, 0));
+
+    // ltc6811_read_cells(&g_ltc, uint16_t (*cv)[12], uint16_t *pec_fail_mask)
+
+    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
   }
   /* USER CODE END StartTaskDataAcquisition */
 }
