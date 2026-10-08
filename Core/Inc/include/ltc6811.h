@@ -4,10 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "main.h"   /* CubeMX: pulls in HAL + SPI_HandleTypeDef */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "include/constants.h"
+// #include "task.h" /* allows the freeRTOS vTaskDelay functionality inside ltc6811.c file */
 
 /* DEFINE PINS */
 #define LTC_CS_PORT GPIOB
@@ -21,22 +19,39 @@ extern "C" {
 #define LTC6811_PEC_BYTES    2u
 #define LTC6811_CELL_LSB_UV  100u /* 100 uV per count, no offset */
 
-/* ---- Command codes (datasheet Table 38, CC[10:0]) -------------------- */
+/* ---- Command codes (datasheet Table 38, CC[10:0]) and on page 59 in the documentation-------------------- */
+
+/* Write configuration Register Group A */
 #define LTC6811_WRCFGA   0x0001u
+/* Read configuration Group A */
 #define LTC6811_RDCFGA   0x0002u
+/* Read Cell Voltage Register Group A */
 #define LTC6811_RDCVA    0x0004u
+/* Read Cell Voltage Register Group B */
 #define LTC6811_RDCVB    0x0006u
+/* Read Cell Voltage Register Group C */
 #define LTC6811_RDCVC    0x0008u
+/* Read Cell Voltage Register Group D */
 #define LTC6811_RDCVD    0x000Au
+/* Read Auxiliary Register Group A */
 #define LTC6811_RDAUXA   0x000Cu
+/* Read Auxiliary Register Group B */
 #define LTC6811_RDAUXB   0x000Eu
+/* Read Status Register Group A */
 #define LTC6811_RDSTATA  0x0010u
+/* Read Status Register Group B */
 #define LTC6811_RDSTATB  0x0012u
+/* Write PWM Regiser Group */
 #define LTC6811_WRPWM    0x0020u
+/* Read PWM Register Group */
 #define LTC6811_RDPWM    0x0022u
+/* Clear Cell Voltage Register Groups */
 #define LTC6811_CLRCELL  0x0711u
+/* Clear Auxiliary Register Groups */
 #define LTC6811_CLRAUX   0x0712u
+/* Clear Status Register Groups */
 #define LTC6811_CLRSTAT  0x0713u
+/* Poll ADC Conversion Status */
 #define LTC6811_PLADC    0x0714u
 
 /* Parameterised commands */
@@ -62,9 +77,9 @@ typedef struct {
     SPI_HandleTypeDef *hspi;
     GPIO_TypeDef      *cs_port;
     uint16_t           cs_pin;
-    uint8_t            n_ic;          /* ICs in the daisy chain */
-    uint8_t            comm_seen;     /* 0 until first transaction */
-    uint32_t           last_comm_cyc; /* DWT->CYCCNT at last CSB rise */
+    uint8_t            n_ic;                 /* ICs in the daisy chain */
+    uint8_t            comm_seen;            /* 0 until first transaction */
+    uint32_t           last_comm_cyc;        /* DWT->CYCCNT at last CSB rise */
 } ltc6811_t;
 
 ltc6811_status_t ltc6811_init(ltc6811_t *d, SPI_HandleTypeDef *hspi,
@@ -96,7 +111,4 @@ ltc6811_status_t ltc6811_selftest_cells(ltc6811_t *d);
 void ltc6811_pack_cfga(uint8_t cfg[LTC6811_REG_BYTES], uint8_t refon, uint8_t adcopt,
                        uint16_t vuv_mV, uint16_t vov_mV, uint16_t dcc_mask, uint8_t dcto);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

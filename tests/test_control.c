@@ -1,14 +1,18 @@
-// Host-side tests for the BMS control state machine.
-// Compiled and run on a laptop with plain `cc` -- never part of the STM32
-// firmware build, and never needs the ARM toolchain. Purely checks the logic
-// in Core/Src/application/control.c against fake inputs.
-//
-// Run it with:
-//   cc -std=c11 -Wall -Wextra -Wpedantic \
-//      -I ../Core/Inc \
-//      test_control.c ../Core/Src/application/control.c \
-//      -o /tmp/test_control && /tmp/test_control
-// (run that from inside the tests/ folder)
+/*
+
+Host-side tests for the BMS control state machine.
+Compiled and run on a laptop with plain `cc` -- never part of the STM32
+firmware build, and never needs the ARM toolchain. Purely checks the logic
+in Core/Src/application/control.c against fake inputs.
+
+Run it with:
+    cc -std=c11 -Wall -Wextra -Wpedantic \
+    -I ../Core/Inc \
+    test_control.c ../Core/Src/application/control.c \
+    -o /tmp/test_control && /tmp/test_control
+(run that from inside the tests/ folder)
+
+*/
 
 #include <assert.h>
 #include <stdio.h>

@@ -1,4 +1,5 @@
 #include "include/ltc6811.h"
+#include "include/constants.h"
 #include <string.h>
 
 /* Datasheet timing (conservative edges of the spec) */
@@ -178,6 +179,7 @@ ltc6811_status_t ltc6811_selftest_cells(ltc6811_t *d)
 
     ltc6811_status_t s = ltc6811_cmd(d, LTC6811_CVST(LTC6811_MD_7KHZ, 1u));
     if (s != LTC6811_OK) return s;
+    // vTaskDelay(4);
     HAL_Delay(4);                                          /* >2.3 ms @ 7 kHz; use vTaskDelay in the RTOS task */
     s = ltc6811_read_cells(d, cv, &fail);
     if (s != LTC6811_OK) return s;

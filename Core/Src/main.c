@@ -15,10 +15,17 @@
   *
   ******************************************************************************
   */
+/*
+
+Main sets up freeRTOS scheduler, global variables, and defines the freeRTOS Tasks. Keep as little code here as possible, and
+instead define functions and logic in another file and link it here to avoid confusion and complexity. 
+
+*/
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "include/constants.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_gpio.h"
 #include "usb_device.h"
@@ -28,11 +35,12 @@
 
 #include "include/control.h"
 #include "include/ltc6811.h"
-// #include "include/spi_utils.h"
-#include "usbd_cdc_if.h"
+// #include "usbd_cdc_if.h"
+#include "include/bmsInterface.h"
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+
+// #include <stdint.h>
+// #include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -66,6 +74,17 @@ osThreadId DataAcquisitionHandle;
 osThreadId DataLoggingHandle;
 osThreadId ErrorStateHandle;
 /* USER CODE BEGIN PV */
+
+///////////// GLOBAL variables and data structs /////////////
+
+/* init itc6811 driver */
+ltc6811_t g_ltc;
+
+/* init BMS State */
+BmsState bmsState;
+
+/* init Modules data struct */
+Modules_t modules;
 
 /* USER CODE END PV */
 
@@ -165,20 +184,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
 
-  /* TEST SPI */
-  // for(;;)
-  // {
-  //   ltc_spi_selftest();
-  //   HAL_Delay(50);
-  // }
-
-  // uint8_t cmd[4];
-  // ltc_send_cmd(CMD_WRCFGA, cmd);
-
-  // if (spi_test != 0)
-  // {
-  //   Error_Handler();
-  // }
 
   /* USER CODE END RTOS_THREADS */
 
@@ -433,6 +438,53 @@ static void MX_SPI2_Init(void)
   }
   /* USER CODE BEGIN SPI2_Init 2 */
 
+  /* init LTC6811 driver */
+  /* TODO init with 1 IC for flat bench testing ONLY */
+  #if 1
+  if (ltc6811_init(&g_ltc, &hspi2, LTC_CS_GPIO_Port, LTC_CS_Pin, 1) != LTC6811_OK) 
+  #else
+  if (ltc6811_init(&g_ltc, &hspi2, LTC_CS_GPIO_Port, LTC_CS_Pin, kNumSlaveICs) != LTC6811_OK) 
+  #endif
+  {
+    Error_Handler();
+  }
+
+  /* uses a HAL_Delay which is okay because this is not inside a freeRTOS Task */
+  if (ltc6811_selftest_cells(&g_ltc) != LTC6811_OK) 
+  {
+    Error_Handler();
+  }
+
+  /* call pack cfga for each IC to configure with default bitmask */
+  // ltc6811_pack_cfga(cfg[0], 1, 0, 0, 0, 0, 0);
+
+  /* TODO hardware testing */
+
+  uint8_t write_data[1][LTC6811_REG_BYTES];
+  uint8_t read_data[1][LTC6811_REG_BYTES];
+  uint16_t pec_bad = 0;
+
+  ltc6811_pack_cfga(write_data[0], 1, 0, 0, 0, 0, 0);
+
+  if (ltc6811_write_group(&g_ltc, LTC6811_WRCFGA, write_data) != LTC6811_OK)
+  {
+    Error_Handler();
+  }
+
+  if (ltc6811_read_group(&g_ltc, LTC6811_RDCFGA, read_data, &pec_bad) != LTC6811_OK) 
+  {
+    Error_Handler();
+  }
+
+  for (int i = 0; i < LTC6811_REG_BYTES; i++)
+  {
+    if (read_data[0][i] != write_data[0][i])
+    {
+      Error_Handler();
+    }
+  }
+
+  
   /* USER CODE END SPI2_Init 2 */
 
 }
@@ -567,23 +619,27 @@ void StartControlTask(void const * argument)
   /* USER CODE BEGIN 5 */
  
   /* Task frequency in ms*/
-  const TickType_t xFrequencyMs = 500;
+  const TickType_t xFrequencyControlTaskMs = 500;
 
   /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTime;
-  xLastWakeTime = xTaskGetTickCount();
+  TickType_t xLastWakeTimeControlTask;
+  xLastWakeTimeControlTask = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
   {
-    /* Toggle LED */
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
+    /* TODO should the control task only run in drive and charge mode? or only NOT in FAULT state? */
+    /* Control will ONLY run when the BMS is not in FAULT state */
+    if (bmsState != BMS_STATE_FAULT)
+    {
+      /* Toggle LED */
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
-    /* TODO Read CAN bus msg */
 
-    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
+    }
+    vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
+    /* USER CODE END 5 */
   }
-  /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_StartTaskDataAcquisition */
@@ -598,35 +654,19 @@ void StartTaskDataAcquisition(void const * argument)
   /* USER CODE BEGIN StartTaskDataAcquisition */
 
   /* Task frequency in ms*/
-  const TickType_t xFrequencyMs = 20;
+  const TickType_t xFrequencyDataAcquisitionTaskMs = 20;
 
   /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTime;
-  xLastWakeTime = xTaskGetTickCount();
-
-  /* init itc6811 driver */
-  ltc6811_t g_ltc;
-
-  if (ltc6811_init(&g_ltc, &hspi2, LTC_CS_GPIO_Port, LTC_CS_Pin, 9) !=
-      LTC6811_OK) 
-  {
-    Error_Handler();
-  }
-
-  ltc6811_selftest_cells(&g_ltc);
+  TickType_t xLastWakeTimeDataAcquitionTask;
+  xLastWakeTimeDataAcquitionTask = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
   {
-    // ltc6811_cmd(&g_ltc, LTC6811_ADCV(MD_7KHZ, 0, 0));
-
-    // ltc6811_write_group(LTC6811_WRCFGA);
-
     ltc6811_cmd(&g_ltc, LTC6811_ADCV(LTC6811_MD_7KHZ, 0, 0));
 
-    // ltc6811_read_cells(&g_ltc, uint16_t (*cv)[12], uint16_t *pec_fail_mask)
-
-    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
+    vTaskDelayUntil(&xLastWakeTimeDataAcquitionTask,
+                    xFrequencyDataAcquisitionTaskMs);
   }
   /* USER CODE END StartTaskDataAcquisition */
 }
@@ -643,11 +683,11 @@ void StartTaskDataLogging(void const * argument)
   /* USER CODE BEGIN StartTaskDataLogging */
 
   /* Task frequency in ms*/
-  const TickType_t xFrequencyMs = 20;
+  const TickType_t xFrequencyDataLoggingTaskMs = 20;
 
   /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTime;
-  xLastWakeTime = xTaskGetTickCount();
+  TickType_t xLastWakeTimeDataLoggingTask;
+  xLastWakeTimeDataLoggingTask = xTaskGetTickCount();
 
   /* init CAN data frame for testing */
   FDCAN_TxHeaderTypeDef msgHeader;
@@ -669,7 +709,7 @@ void StartTaskDataLogging(void const * argument)
     /* send CAN msg */
     HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &msgHeader, msgData);
 
-    vTaskDelayUntil(&xLastWakeTime, xFrequencyMs);
+    vTaskDelayUntil(&xLastWakeTimeDataLoggingTask, xFrequencyDataLoggingTaskMs);
   }
   /* USER CODE END StartTaskDataLogging */
 }
@@ -724,11 +764,13 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
 
-  /* stop scheduler from swithcing tasks */
-  taskDISABLE_INTERRUPTS();
+  /* If BMS enters the error handler during set up instead of during drive mode then it needs to enter FAULT state */
+  /* set BMS state to FAULT state */
+  bmsState = BMS_STATE_FAULT;
 
   for (;;)
   {
+    /* Toggle all LEDs */
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
                                   GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
                                   GPIO_PIN_15);
