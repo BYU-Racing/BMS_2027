@@ -25,9 +25,6 @@ instead define functions and logic in another file and link it here to avoid con
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "include/constants.h"
-#include "stm32g4xx_hal.h"
-#include "stm32g4xx_hal_gpio.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -273,10 +270,10 @@ static void MX_FDCAN1_Init(void)
   hfdcan1.Init.AutoRetransmission = DISABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
-  hfdcan1.Init.NominalPrescaler = 16;
+  hfdcan1.Init.NominalPrescaler = 34;
   hfdcan1.Init.NominalSyncJumpWidth = 1;
-  hfdcan1.Init.NominalTimeSeg1 = 1;
-  hfdcan1.Init.NominalTimeSeg2 = 1;
+  hfdcan1.Init.NominalTimeSeg1 = 16;
+  hfdcan1.Init.NominalTimeSeg2 = 3;
   hfdcan1.Init.DataPrescaler = 1;
   hfdcan1.Init.DataSyncJumpWidth = 1;
   hfdcan1.Init.DataTimeSeg1 = 1;
@@ -422,7 +419,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
   hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
   hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
@@ -449,6 +446,7 @@ static void MX_SPI2_Init(void)
     Error_Handler();
   }
 
+  #if 1
   /* uses a HAL_Delay which is okay because this is not inside a freeRTOS Task */
   if (ltc6811_selftest_cells(&g_ltc) != LTC6811_OK) 
   {
@@ -484,7 +482,8 @@ static void MX_SPI2_Init(void)
     }
   }
 
-  
+
+  #endif
   /* USER CODE END SPI2_Init 2 */
 
 }
@@ -619,11 +618,11 @@ void StartControlTask(void const * argument)
   /* USER CODE BEGIN 5 */
  
   /* Task frequency in ms*/
-  const TickType_t xFrequencyControlTaskMs = 500;
+  // const TickType_t xFrequencyControlTaskMs = 500;
 
   /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTimeControlTask;
-  xLastWakeTimeControlTask = xTaskGetTickCount();
+  // TickType_t xLastWakeTimeControlTask;
+  // xLastWakeTimeControlTask = xTaskGetTickCount();
 
   /* Infinite loop */
   for(;;)
@@ -635,11 +634,11 @@ void StartControlTask(void const * argument)
       /* Toggle LED */
       HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
-
+      vTaskDelay(500);
     }
-    vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
-    /* USER CODE END 5 */
-  }
+    // vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
+  /* USER CODE END 5 */
+  }  
 }
 
 /* USER CODE BEGIN Header_StartTaskDataAcquisition */
@@ -653,20 +652,14 @@ void StartTaskDataAcquisition(void const * argument)
 {
   /* USER CODE BEGIN StartTaskDataAcquisition */
 
-  /* Task frequency in ms*/
-  const TickType_t xFrequencyDataAcquisitionTaskMs = 20;
-
-  /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTimeDataAcquitionTask;
-  xLastWakeTimeDataAcquitionTask = xTaskGetTickCount();
+  bmsInterface_initSlaves(&g_ltc);
 
   /* Infinite loop */
   for(;;)
   {
-    ltc6811_cmd(&g_ltc, LTC6811_ADCV(LTC6811_MD_7KHZ, 0, 0));
-
-    vTaskDelayUntil(&xLastWakeTimeDataAcquitionTask,
-                    xFrequencyDataAcquisitionTaskMs);
+    bmsInterface_updateCellVoltages(&g_ltc, &modules);
+    bmsInterface_printCellVoltages(&modules, 1u);
+    vTaskDelay(pdMS_TO_TICKS(500));
   }
   /* USER CODE END StartTaskDataAcquisition */
 }
@@ -754,6 +747,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 1 */
 }
 
+static void ErrorDelayMs(uint32_t ms) 
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; /* enable DWT */
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  uint32_t start = DWT->CYCCNT;
+  uint32_t cycles = ms * (SystemCoreClock / 1000U);
+
+  while ((DWT->CYCCNT - start) < cycles) {
+  }
+}
+
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
@@ -762,6 +767,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+
+  /* this disables hardware interrupts and so no other tasks will run */
   __disable_irq();
 
   /* If BMS enters the error handler during set up instead of during drive mode then it needs to enter FAULT state */
@@ -774,7 +781,7 @@ void Error_Handler(void)
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
                                   GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
                                   GPIO_PIN_15);
-    osDelay(500);
+    ErrorDelayMs(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }
