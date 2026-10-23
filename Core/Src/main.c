@@ -69,7 +69,6 @@ UART_HandleTypeDef huart5;
 osThreadId ControlTaskHandle;
 osThreadId DataAcquisitionHandle;
 osThreadId DataLoggingHandle;
-osThreadId ErrorStateHandle;
 /* USER CODE BEGIN PV */
 
 ///////////// GLOBAL variables and data structs /////////////
@@ -96,7 +95,6 @@ static void MX_UART5_Init(void);
 void StartControlTask(void const * argument);
 void StartTaskDataAcquisition(void const * argument);
 void StartTaskDataLogging(void const * argument);
-void StartErrorState(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -104,6 +102,18 @@ void StartErrorState(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void ErrorDelayMs(uint32_t ms) 
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; /* enable DWT */
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  uint32_t start = DWT->CYCCNT;
+  uint32_t cycles = ms * (SystemCoreClock / 1000U);
+
+  while ((DWT->CYCCNT - start) < cycles) {
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -173,10 +183,6 @@ int main(void)
   /* definition and creation of DataLogging */
   osThreadDef(DataLogging, StartTaskDataLogging, osPriorityLow, 0, 128);
   DataLoggingHandle = osThreadCreate(osThread(DataLogging), NULL);
-
-  /* definition and creation of ErrorState */
-  osThreadDef(ErrorState, StartErrorState, osPriorityIdle, 0, 128);
-  ErrorStateHandle = osThreadCreate(osThread(ErrorState), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -637,8 +643,8 @@ void StartControlTask(void const * argument)
       vTaskDelay(500);
     }
     // vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
+  }
   /* USER CODE END 5 */
-  }  
 }
 
 /* USER CODE BEGIN Header_StartTaskDataAcquisition */
@@ -707,24 +713,6 @@ void StartTaskDataLogging(void const * argument)
   /* USER CODE END StartTaskDataLogging */
 }
 
-/* USER CODE BEGIN Header_StartErrorState */
-/**
-* @brief Function implementing the ErrorState thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartErrorState */
-void StartErrorState(void const * argument)
-{
-  /* USER CODE BEGIN StartErrorState */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartErrorState */
-}
-
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM6 interrupt took place, inside
@@ -745,18 +733,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
 
   /* USER CODE END Callback 1 */
-}
-
-static void ErrorDelayMs(uint32_t ms) 
-{
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; /* enable DWT */
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-  uint32_t start = DWT->CYCCNT;
-  uint32_t cycles = ms * (SystemCoreClock / 1000U);
-
-  while ((DWT->CYCCNT - start) < cycles) {
-  }
 }
 
 /**
