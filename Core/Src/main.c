@@ -103,6 +103,11 @@ void StartTaskDataLogging(void const * argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/*
+Once BMS enters error state, interrupts are disabled and freeRTOS does not run any more tasks,
+thus vTaskDelay does not work inside the error state loop. A another delay functions is needed
+that counts system ticks that can work without freeRTOS
+*/
 static void ErrorDelayMs(uint32_t ms) 
 {
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; /* enable DWT */
@@ -462,7 +467,7 @@ static void MX_SPI2_Init(void)
   /* call pack cfga for each IC to configure with default bitmask */
   // ltc6811_pack_cfga(cfg[0], 1, 0, 0, 0, 0, 0);
 
-  /* TODO hardware testing */
+  /* TODO: hardware testing */
 
   uint8_t write_data[1][LTC6811_REG_BYTES];
   uint8_t read_data[1][LTC6811_REG_BYTES];
@@ -633,15 +638,18 @@ void StartControlTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    /* TODO should the control task only run in drive and charge mode? or only NOT in FAULT state? */
+    /* TODO: should the control task only run in drive and charge mode? or only NOT in FAULT state? */
     /* Control will ONLY run when the BMS is not in FAULT state */
     if (bmsState != BMS_STATE_FAULT)
     {
       /* Toggle LED */
       HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
 
-      vTaskDelay(500);
     }
+
+    /* control task delay here TODO: define delay timing reasoning */
+    vTaskDelay(500);
+
     // vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
   }
   /* USER CODE END 5 */
@@ -757,6 +765,10 @@ void Error_Handler(void)
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
                                   GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
                                   GPIO_PIN_15);
+    /* send an error msg to serial terminal */
+    // TODO: what other error handling is needed here?
+    printf("ERROR\n");
+    /* using defined error delay function for time delay because interrupts are disabled in error state */
     ErrorDelayMs(500);
   }
   /* USER CODE END Error_Handler_Debug */

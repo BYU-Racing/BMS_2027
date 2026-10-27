@@ -41,6 +41,8 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/control.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/bmsInterface.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/ltc6811.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/swo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/semihosting.c
 )
 
 # STM32 HAL/LL Drivers
