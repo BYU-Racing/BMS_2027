@@ -1,6 +1,5 @@
 #include "include/bmsInterface.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "stm32g4xx_hal.h"
 #include <stdio.h>
 
 #define REFUP_WAIT_MS     6u    /* tREFUP max 4.4 ms after REFON is set */
@@ -30,7 +29,8 @@ ltc6811_status_t bmsInterface_initSlaves(ltc6811_t *drv)
     if (!drv) return LTC6811_ERR_ARG;
     ltc6811_status_t s = writeConfig(drv);
     if (s != LTC6811_OK) return s;
-    vTaskDelay(pdMS_TO_TICKS(REFUP_WAIT_MS) + 1u);
+    // vTaskDelay(pdMS_TO_TICKS(REFUP_WAIT_MS) + 1u);
+    HAL_Delay(REFUP_WAIT_MS);
     return LTC6811_OK;
 }
 
@@ -51,8 +51,9 @@ ltc6811_status_t bmsInterface_updateCellVoltages(ltc6811_t *drv, Modules_t *mods
     s = ltc6811_cmd(drv, LTC6811_ADCV(LTC6811_MD_7KHZ, 0u, 0u));
     if (s != LTC6811_OK) { markAllInvalid(mods, nMod); return s; }
 
-    vTaskDelay(pdMS_TO_TICKS(ADC_CONV_WAIT_MS) + 1u);
-    
+    // vTaskDelay(pdMS_TO_TICKS(ADC_CONV_WAIT_MS) + 1u);
+    HAL_Delay(ADC_CONV_WAIT_MS);
+
     s = ltc6811_read_cells(drv, cv, &failMask);
     if (s == LTC6811_ERR_SPI) { markAllInvalid(mods, nMod); return s; }
 
