@@ -12,7 +12,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -41,6 +40,11 @@ add_subdirectory(cmake/stm32cubemx)
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
+
+option(NUCLEO_DEBUG "Build for Nucleo with ST-LINK VCP debug output" OFF)
+    if(NUCLEO_DEBUG)
+        target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE NUCLEO_DEBUG)
+    endif()
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE

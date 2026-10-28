@@ -70,8 +70,6 @@ void HAL_MspInit(void)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
-  /* PendSV_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
 
   /** Disable the internal Pull-Up in Dead Battery pins of UCPD peripheral
   */
@@ -220,102 +218,6 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef* hfdcan)
     /* USER CODE BEGIN FDCAN2_MspDeInit 1 */
 
     /* USER CODE END FDCAN2_MspDeInit 1 */
-  }
-
-}
-
-/**
-  * @brief QSPI MSP Initialization
-  * This function configures the hardware resources used in this example
-  * @param hqspi: QSPI handle pointer
-  * @retval None
-  */
-void HAL_QSPI_MspInit(QSPI_HandleTypeDef* hqspi)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-  if(hqspi->Instance==QUADSPI)
-  {
-    /* USER CODE BEGIN QUADSPI_MspInit 0 */
-
-    /* USER CODE END QUADSPI_MspInit 0 */
-
-  /** Initializes the peripherals clocks
-  */
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_QSPI;
-    PeriphClkInit.QspiClockSelection = RCC_QSPICLKSOURCE_SYSCLK;
-
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    /* Peripheral clock enable */
-    __HAL_RCC_QSPI_CLK_ENABLE();
-
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    /**QUADSPI1 GPIO Configuration
-    PA3     ------> QUADSPI1_CLK
-    PA6     ------> QUADSPI1_BK1_IO3
-    PA7     ------> QUADSPI1_BK1_IO2
-    PB0     ------> QUADSPI1_BK1_IO1
-    PB1     ------> QUADSPI1_BK1_IO0
-    PB11     ------> QUADSPI1_BK1_NCS
-    */
-    GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_6|GPIO_PIN_7;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_11;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    /* USER CODE BEGIN QUADSPI_MspInit 1 */
-
-    /* USER CODE END QUADSPI_MspInit 1 */
-
-  }
-
-}
-
-/**
-  * @brief QSPI MSP De-Initialization
-  * This function freeze the hardware resources used in this example
-  * @param hqspi: QSPI handle pointer
-  * @retval None
-  */
-void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* hqspi)
-{
-  if(hqspi->Instance==QUADSPI)
-  {
-    /* USER CODE BEGIN QUADSPI_MspDeInit 0 */
-
-    /* USER CODE END QUADSPI_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_QSPI_CLK_DISABLE();
-
-    /**QUADSPI1 GPIO Configuration
-    PA3     ------> QUADSPI1_CLK
-    PA6     ------> QUADSPI1_BK1_IO3
-    PA7     ------> QUADSPI1_BK1_IO2
-    PB0     ------> QUADSPI1_BK1_IO1
-    PB1     ------> QUADSPI1_BK1_IO0
-    PB11     ------> QUADSPI1_BK1_NCS
-    */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3|GPIO_PIN_6|GPIO_PIN_7);
-
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_11);
-
-    /* USER CODE BEGIN QUADSPI_MspDeInit 1 */
-
-    /* USER CODE END QUADSPI_MspDeInit 1 */
   }
 
 }

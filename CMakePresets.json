@@ -22,6 +22,14 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "Debug-Nucleo",
+            "inherits": "Debug",
+            "displayName": "Debug (Nucleo + VCP printf)",
+            "cacheVariables": {
+                "NUCLEO_DEBUG": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -32,6 +40,10 @@
         {
             "name": "Release",
             "configurePreset": "Release"
+        },
+        {
+            "name": "Debug-Nucleo",
+            "configurePreset": "Debug-Nucleo"
         }
     ],
     "testPresets": [
@@ -42,4 +54,5 @@
             "configurePreset": "Debug"
         }
     ]
+    
 }

@@ -24,7 +24,6 @@ instead define functions and logic in another file and link it here to avoid con
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -35,6 +34,7 @@ instead define functions and logic in another file and link it here to avoid con
 // #include "usbd_cdc_if.h"
 #include "include/bmsInterface.h"
 #include <stdint.h>
+#include "include/dbg_print.h"
 
 // #include <stdint.h>
 // #include <stdio.h>
@@ -60,15 +60,10 @@ instead define functions and logic in another file and link it here to avoid con
 FDCAN_HandleTypeDef hfdcan1;
 FDCAN_HandleTypeDef hfdcan2;
 
-QSPI_HandleTypeDef hqspi1;
-
 SPI_HandleTypeDef hspi2;
 
 UART_HandleTypeDef huart5;
 
-osThreadId ControlTaskHandle;
-osThreadId DataAcquisitionHandle;
-osThreadId DataLoggingHandle;
 /* USER CODE BEGIN PV */
 
 ///////////// GLOBAL variables and data structs /////////////
@@ -89,13 +84,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_FDCAN2_Init(void);
-static void MX_QUADSPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_UART5_Init(void);
-void StartControlTask(void const * argument);
-void StartTaskDataAcquisition(void const * argument);
-void StartTaskDataLogging(void const * argument);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -139,6 +129,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  dbg_init();
 
   /* USER CODE END Init */
 
@@ -153,52 +144,12 @@ int main(void)
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
-  MX_QUADSPI1_Init();
+  MX_USB_Device_Init();
   MX_SPI2_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* definition and creation of ControlTask */
-  osThreadDef(ControlTask, StartControlTask, osPriorityHigh, 0, 128);
-  ControlTaskHandle = osThreadCreate(osThread(ControlTask), NULL);
-
-  /* definition and creation of DataAcquisition */
-  osThreadDef(DataAcquisition, StartTaskDataAcquisition, osPriorityNormal, 0, 128);
-  DataAcquisitionHandle = osThreadCreate(osThread(DataAcquisition), NULL);
-
-  /* definition and creation of DataLogging */
-  osThreadDef(DataLogging, StartTaskDataLogging, osPriorityLow, 0, 128);
-  DataLoggingHandle = osThreadCreate(osThread(DataLogging), NULL);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-
-
-  /* USER CODE END RTOS_THREADS */
-
-  /* Start scheduler */
-  osKernelStart();
-
-  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -376,41 +327,6 @@ static void MX_FDCAN2_Init(void)
 }
 
 /**
-  * @brief QUADSPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_QUADSPI1_Init(void)
-{
-
-  /* USER CODE BEGIN QUADSPI1_Init 0 */
-
-  /* USER CODE END QUADSPI1_Init 0 */
-
-  /* USER CODE BEGIN QUADSPI1_Init 1 */
-
-  /* USER CODE END QUADSPI1_Init 1 */
-  /* QUADSPI1 parameter configuration*/
-  hqspi1.Instance = QUADSPI;
-  hqspi1.Init.ClockPrescaler = 255;
-  hqspi1.Init.FifoThreshold = 1;
-  hqspi1.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
-  hqspi1.Init.FlashSize = 1;
-  hqspi1.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_1_CYCLE;
-  hqspi1.Init.ClockMode = QSPI_CLOCK_MODE_0;
-  hqspi1.Init.FlashID = QSPI_FLASH_ID_1;
-  hqspi1.Init.DualFlash = QSPI_DUALFLASH_DISABLE;
-  if (HAL_QSPI_Init(&hqspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN QUADSPI1_Init 2 */
-
-  /* USER CODE END QUADSPI1_Init 2 */
-
-}
-
-/**
   * @brief SPI2 Initialization Function
   * @param None
   * @retval None
@@ -457,7 +373,7 @@ static void MX_SPI2_Init(void)
     Error_Handler();
   }
 
-  #if 1
+  #if 0
   /* uses a HAL_Delay which is okay because this is not inside a freeRTOS Task */
   if (ltc6811_selftest_cells(&g_ltc) != LTC6811_OK) 
   {
@@ -591,6 +507,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PA6 PA7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PA8 PA9 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
@@ -614,112 +538,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartControlTask */
-/**
-  * @brief  Function implementing the ControlTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartControlTask */
-void StartControlTask(void const * argument)
-{
-  /* init code for USB_Device */
-  MX_USB_Device_Init();
-  /* USER CODE BEGIN 5 */
- 
-  /* Task frequency in ms*/
-  // const TickType_t xFrequencyControlTaskMs = 500;
-
-  /* Initialise the xLastWakeTime variable with the current time. */
-  // TickType_t xLastWakeTimeControlTask;
-  // xLastWakeTimeControlTask = xTaskGetTickCount();
-
-  /* Infinite loop */
-  for(;;)
-  {
-    /* TODO: should the control task only run in drive and charge mode? or only NOT in FAULT state? */
-    /* Control will ONLY run when the BMS is not in FAULT state */
-    if (bmsState != BMS_STATE_FAULT)
-    {
-      /* Toggle LED */
-      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
-
-    }
-
-    /* control task delay here TODO: define delay timing reasoning */
-    vTaskDelay(500);
-
-    // vTaskDelayUntil(&xLastWakeTimeControlTask, xFrequencyControlTaskMs);
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_StartTaskDataAcquisition */
-/**
-* @brief Function implementing the DataAcquisition thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTaskDataAcquisition */
-void StartTaskDataAcquisition(void const * argument)
-{
-  /* USER CODE BEGIN StartTaskDataAcquisition */
-
-  bmsInterface_initSlaves(&g_ltc);
-
-  /* Infinite loop */
-  for(;;)
-  {
-    bmsInterface_updateCellVoltages(&g_ltc, &modules);
-    bmsInterface_printCellVoltages(&modules, 1u);
-    vTaskDelay(pdMS_TO_TICKS(500));
-  }
-  /* USER CODE END StartTaskDataAcquisition */
-}
-
-/* USER CODE BEGIN Header_StartTaskDataLogging */
-/**
-* @brief Function implementing the DataLogging thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTaskDataLogging */
-void StartTaskDataLogging(void const * argument)
-{
-  /* USER CODE BEGIN StartTaskDataLogging */
-
-  /* Task frequency in ms*/
-  const TickType_t xFrequencyDataLoggingTaskMs = 20;
-
-  /* Initialise the xLastWakeTime variable with the current time. */
-  TickType_t xLastWakeTimeDataLoggingTask;
-  xLastWakeTimeDataLoggingTask = xTaskGetTickCount();
-
-  /* init CAN data frame for testing */
-  FDCAN_TxHeaderTypeDef msgHeader;
-  uint8_t msgData[8] = {1,0,0,0,0,0,0,0};
-
-  msgHeader.Identifier = 0x009F;
-  msgHeader.IdType = FDCAN_STANDARD_ID;
-  msgHeader.TxFrameType = FDCAN_DATA_FRAME;
-  msgHeader.DataLength = FDCAN_DLC_BYTES_8;
-  msgHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-  msgHeader.BitRateSwitch = FDCAN_BRS_OFF;
-  msgHeader.FDFormat = FDCAN_CLASSIC_CAN;
-  msgHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-  msgHeader.MessageMarker = 0;
-
-  /* Infinite loop */
-  for(;;)
-  {
-    /* send CAN msg */
-    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &msgHeader, msgData);
-
-    vTaskDelayUntil(&xLastWakeTimeDataLoggingTask, xFrequencyDataLoggingTaskMs);
-  }
-  /* USER CODE END StartTaskDataLogging */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -768,8 +586,11 @@ void Error_Handler(void)
     /* send an error msg to serial terminal */
     // TODO: what other error handling is needed here?
     printf("ERROR\n");
+
+    dbg_printf("TESTING ERROR OUTPUT\n");
+
     /* using defined error delay function for time delay because interrupts are disabled in error state */
-    ErrorDelayMs(500);
+    ErrorDelayMs(250);
   }
   /* USER CODE END Error_Handler_Debug */
 }
