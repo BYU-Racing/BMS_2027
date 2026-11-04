@@ -24,6 +24,7 @@ instead define functions and logic in another file and link it here to avoid con
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32g4xx_hal.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -33,8 +34,10 @@ instead define functions and logic in another file and link it here to avoid con
 #include "include/ltc6811.h"
 // #include "usbd_cdc_if.h"
 #include "include/bmsInterface.h"
-#include <stdint.h>
 #include "include/dbg_print.h"
+#include <stdint.h>
+#include <stdio.h>
+
 
 // #include <stdint.h>
 // #include <stdio.h>
@@ -60,9 +63,10 @@ instead define functions and logic in another file and link it here to avoid con
 FDCAN_HandleTypeDef hfdcan1;
 FDCAN_HandleTypeDef hfdcan2;
 
-SPI_HandleTypeDef hspi2;
-
+UART_HandleTypeDef hlpuart1;
 UART_HandleTypeDef huart5;
+
+SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
 
@@ -86,6 +90,7 @@ static void MX_FDCAN1_Init(void);
 static void MX_FDCAN2_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_UART5_Init(void);
+static void MX_LPUART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -108,6 +113,15 @@ static void ErrorDelayMs(uint32_t ms)
 
   while ((DWT->CYCCNT - start) < cycles) {
   }
+}
+
+/*
+Rereouting printf() on dev board
+*/
+int _write(int file, char *ptr, int len) 
+{
+  HAL_UART_Transmit(&hlpuart1, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+  return len;
 }
 
 /* USER CODE END 0 */
@@ -147,7 +161,25 @@ int main(void)
   MX_USB_Device_Init();
   MX_SPI2_Init();
   MX_UART5_Init();
+  MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  /* init CAN data frame for testing */
+  FDCAN_TxHeaderTypeDef msgHeader;
+  uint8_t msgData[8] = {1, 0, 0, 0, 0, 0, 0, 0};
+
+  msgHeader.Identifier = 0x009F;
+  msgHeader.IdType = FDCAN_STANDARD_ID;
+  msgHeader.TxFrameType = FDCAN_DATA_FRAME;
+  msgHeader.DataLength = FDCAN_DLC_BYTES_8;
+  msgHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  msgHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  msgHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  msgHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  msgHeader.MessageMarker = 0;
+
+  // set onboard pin HIGH
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 
   /* USER CODE END 2 */
 
@@ -155,6 +187,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* send CAN msg */
+    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &msgHeader, msgData);
+
+    printf("CAN MSG SENT\n");
+
+    printf("%d\n", hfdcan2.ErrorCode);
+
+    HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -327,6 +367,101 @@ static void MX_FDCAN2_Init(void)
 }
 
 /**
+  * @brief LPUART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_LPUART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN LPUART1_Init 0 */
+
+  /* USER CODE END LPUART1_Init 0 */
+
+  /* USER CODE BEGIN LPUART1_Init 1 */
+
+  /* USER CODE END LPUART1_Init 1 */
+  hlpuart1.Instance = LPUART1;
+  hlpuart1.Init.BaudRate = 115200;
+  hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
+  hlpuart1.Init.StopBits = UART_STOPBITS_1;
+  hlpuart1.Init.Parity = UART_PARITY_NONE;
+  hlpuart1.Init.Mode = UART_MODE_TX_RX;
+  hlpuart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  hlpuart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  hlpuart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  hlpuart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&hlpuart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&hlpuart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&hlpuart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&hlpuart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN LPUART1_Init 2 */
+
+  /* USER CODE END LPUART1_Init 2 */
+
+}
+
+/**
+  * @brief UART5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART5_Init(void)
+{
+
+  /* USER CODE BEGIN UART5_Init 0 */
+
+  /* USER CODE END UART5_Init 0 */
+
+  /* USER CODE BEGIN UART5_Init 1 */
+
+  /* USER CODE END UART5_Init 1 */
+  huart5.Instance = UART5;
+  huart5.Init.BaudRate = 115200;
+  huart5.Init.WordLength = UART_WORDLENGTH_8B;
+  huart5.Init.StopBits = UART_STOPBITS_1;
+  huart5.Init.Parity = UART_PARITY_NONE;
+  huart5.Init.Mode = UART_MODE_TX_RX;
+  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart5.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart5, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart5, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART5_Init 2 */
+
+  /* USER CODE END UART5_Init 2 */
+
+}
+
+/**
   * @brief SPI2 Initialization Function
   * @param None
   * @retval None
@@ -416,54 +551,6 @@ static void MX_SPI2_Init(void)
 }
 
 /**
-  * @brief UART5 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_UART5_Init(void)
-{
-
-  /* USER CODE BEGIN UART5_Init 0 */
-
-  /* USER CODE END UART5_Init 0 */
-
-  /* USER CODE BEGIN UART5_Init 1 */
-
-  /* USER CODE END UART5_Init 1 */
-  huart5.Instance = UART5;
-  huart5.Init.BaudRate = 115200;
-  huart5.Init.WordLength = UART_WORDLENGTH_8B;
-  huart5.Init.StopBits = UART_STOPBITS_1;
-  huart5.Init.Parity = UART_PARITY_NONE;
-  huart5.Init.Mode = UART_MODE_TX_RX;
-  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart5.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart5, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart5, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart5) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN UART5_Init 2 */
-
-  /* USER CODE END UART5_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -484,8 +571,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_2_Pin|DIG_OUT_3_Pin
-                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin|DIG_OUT_6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_3_Pin|DIG_OUT_4_Pin
+                          |DIG_OUT_5_Pin|DIG_OUT_6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LTC_CS_GPIO_Port, LTC_CS_Pin, GPIO_PIN_RESET);
@@ -498,10 +585,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DIG_OUT_0_Pin DIG_OUT_1_Pin DIG_OUT_2_Pin DIG_OUT_3_Pin
-                           DIG_OUT_4_Pin DIG_OUT_5_Pin DIG_OUT_6_Pin */
-  GPIO_InitStruct.Pin = DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_2_Pin|DIG_OUT_3_Pin
-                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin|DIG_OUT_6_Pin;
+  /*Configure GPIO pins : DIG_OUT_0_Pin DIG_OUT_1_Pin DIG_OUT_3_Pin DIG_OUT_4_Pin
+                           DIG_OUT_5_Pin DIG_OUT_6_Pin */
+  GPIO_InitStruct.Pin = DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_3_Pin|DIG_OUT_4_Pin
+                          |DIG_OUT_5_Pin|DIG_OUT_6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

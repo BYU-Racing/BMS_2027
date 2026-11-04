@@ -28,19 +28,19 @@ set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../USB_Device/App/usbd_cdc_if.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../USB_Device/Target/usbd_conf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/bmsInterface.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/control.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/dbg_print.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/ltc6811.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/semihosting.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/swo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/stm32g4xx_it.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/stm32g4xx_hal_msp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/stm32g4xx_hal_timebase_tim.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/sysmem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/syscalls.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../startup_stm32g474xx.s
-)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/bmsInterface.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/control.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/dbg_print.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/ltc6811.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/semihosting.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Core/Src/application/swo.c
+)   
 
 # STM32 HAL/LL Drivers
 set(STM32_Drivers_Src
@@ -64,10 +64,10 @@ set(STM32_Drivers_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_fdcan.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi_ex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi_ex.c
 )
 
 # Drivers Midllewares
