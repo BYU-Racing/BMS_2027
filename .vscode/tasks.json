@@ -1,0 +1,49 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure Unit Tests Windows",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "$ErrorActionPreference = 'Stop'; & 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/Tools/Launch-VsDevShell.ps1' -Arch amd64 -HostArch amd64 -SkipAutomaticLocation; cmake --preset Unit_Tests; exit $LASTEXITCODE"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/tests"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Unit Tests Windows",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "$ErrorActionPreference = 'Stop'; & 'C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/Tools/Launch-VsDevShell.ps1' -Arch amd64 -HostArch amd64 -SkipAutomaticLocation; cmake --build --preset Unit_Tests; exit $LASTEXITCODE"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/tests"
+            },
+            "dependsOn": "Configure Unit Tests Windows",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$msCompile"]
+        },
+        {
+            "label": "Run Unit Tests",
+            "type": "process",
+            "command": "ctest",
+            "args": [
+                "--test-dir", "${workspaceFolder}/build/HostTests",
+                "--output-on-failure"
+            ],
+            "dependsOn": "Build Unit Tests Windows",
+            "problemMatcher": []
+        }
+    ]
+}

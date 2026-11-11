@@ -1,0 +1,22 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "Unit_Tests",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/../build/HostTests",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_FLAGS_DEBUG": "/Zi /Od /Ob0 /RTC1",
+                "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /RTC1",
+                "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Unit_Tests",
+            "configurePreset": "Unit_Tests"
+        }
+    ]
+}

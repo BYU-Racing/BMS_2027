@@ -1,30 +1,33 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * File Name          : app_freertos.c
-  * Description        : Code for freertos applications
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : app_freertos.c
+ * Description        : Code for freertos applications
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os.h"
 #include "main.h"
+#include "task.h"
+
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app_bridge.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,14 +49,132 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
+/* Definitions for ControlTask */
+osThreadId_t ControlTaskHandle;
+const osThreadAttr_t ControlTask_attributes = {
+    .name = "ControlTask", .priority = (osPriority_t)osPriorityHigh, .stack_size = 128 * 4
+};
+/* Definitions for DataAcquisition */
+osThreadId_t DataAcquisitionHandle;
+const osThreadAttr_t DataAcquisition_attributes = {
+    .name = "DataAcquisition", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128 * 4
+};
+/* Definitions for DataLogging */
+osThreadId_t DataLoggingHandle;
+const osThreadAttr_t DataLogging_attributes = {
+    .name = "DataLogging", .priority = (osPriority_t)osPriorityLow, .stack_size = 128 * 4
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
 /* USER CODE END FunctionPrototypes */
 
+void StartControlTask(void *argument);
+void StartTaskDataAcquisition(void *argument);
+void StartTaskDataLogging(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/**
+ * @brief  FreeRTOS initialization
+ * @param  None
+ * @retval None
+ */
+void MX_FREERTOS_Init(void) {
+    /* USER CODE BEGIN Init */
+
+    /* USER CODE END Init */
+
+    /* USER CODE BEGIN RTOS_MUTEX */
+    /* add mutexes, ... */
+    /* USER CODE END RTOS_MUTEX */
+
+    /* USER CODE BEGIN RTOS_SEMAPHORES */
+    /* add semaphores, ... */
+    /* USER CODE END RTOS_SEMAPHORES */
+
+    /* USER CODE BEGIN RTOS_TIMERS */
+    /* start timers, add new ones, ... */
+    /* USER CODE END RTOS_TIMERS */
+
+    /* USER CODE BEGIN RTOS_QUEUES */
+    /* add queues, ... */
+    /* USER CODE END RTOS_QUEUES */
+
+    /* Create the thread(s) */
+    /* creation of ControlTask */
+    ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
+
+    /* creation of DataAcquisition */
+    DataAcquisitionHandle =
+        osThreadNew(StartTaskDataAcquisition, NULL, &DataAcquisition_attributes);
+
+    /* creation of DataLogging */
+    DataLoggingHandle = osThreadNew(StartTaskDataLogging, NULL, &DataLogging_attributes);
+
+    /* USER CODE BEGIN RTOS_THREADS */
+    /* add threads, ... */
+    /* USER CODE END RTOS_THREADS */
+
+    /* USER CODE BEGIN RTOS_EVENTS */
+    /* add events, ... */
+    /* USER CODE END RTOS_EVENTS */
+}
+
+/* USER CODE BEGIN Header_StartControlTask */
+/**
+ * @brief  Function implementing the ControlTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartControlTask */
+void StartControlTask(void *argument) {
+    /* init code for USB_Device */
+    MX_USB_Device_Init();
+    /* USER CODE BEGIN StartControlTask */
+    /* Infinite loop */
+    for (;;) {
+        app_ControlTask();
+        osDelay(1);
+    }
+    /* USER CODE END StartControlTask */
+}
+
+/* USER CODE BEGIN Header_StartTaskDataAcquisition */
+/**
+ * @brief Function implementing the DataAcquisition thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartTaskDataAcquisition */
+void StartTaskDataAcquisition(void *argument) {
+    /* USER CODE BEGIN StartTaskDataAcquisition */
+    /* Infinite loop */
+    for (;;) {
+        app_DataAcquisitionTask();
+        osDelay(1);
+    }
+    /* USER CODE END StartTaskDataAcquisition */
+}
+
+/* USER CODE BEGIN Header_StartTaskDataLogging */
+/**
+ * @brief Function implementing the DataLogging thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartTaskDataLogging */
+void StartTaskDataLogging(void *argument) {
+    /* USER CODE BEGIN StartTaskDataLogging */
+    /* Infinite loop */
+    for (;;) {
+        osDelay(1);
+    }
+    /* USER CODE END StartTaskDataLogging */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
-
