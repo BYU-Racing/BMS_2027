@@ -39,8 +39,6 @@
         * EVENT_OUT
         * EXTI
      PG10-NRST   ------> RCC_MCO
-     PA8   ------> I2C2_SDA
-     PA9   ------> I2C2_SCL
 */
 void MX_GPIO_Init(void)
 {
@@ -57,7 +55,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_2_Pin|DIG_OUT_3_Pin
-                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin|DIG_OUT_6_Pin, GPIO_PIN_RESET);
+                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PG10 */
   GPIO_InitStruct.Pin = GPIO_PIN_10;
@@ -68,20 +66,12 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DIG_OUT_0_Pin DIG_OUT_1_Pin DIG_OUT_2_Pin DIG_OUT_3_Pin
-                           DIG_OUT_4_Pin DIG_OUT_5_Pin DIG_OUT_6_Pin */
+                           DIG_OUT_4_Pin DIG_OUT_5_Pin */
   GPIO_InitStruct.Pin = DIG_OUT_0_Pin|DIG_OUT_1_Pin|DIG_OUT_2_Pin|DIG_OUT_3_Pin
-                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin|DIG_OUT_6_Pin;
+                          |DIG_OUT_4_Pin|DIG_OUT_5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PA8 PA9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }

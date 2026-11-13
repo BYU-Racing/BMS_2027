@@ -107,6 +107,7 @@ int main(void)
   MX_SPI2_Init();
   MX_UART5_Init();
   MX_IWDG_Init();
+  MX_FDCAN3_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

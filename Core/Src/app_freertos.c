@@ -19,9 +19,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include "cmsis_os.h"
-#include "main.h"
 #include "task.h"
+#include "main.h"
+#include "cmsis_os.h"
 
 #include "usb_device.h"
 
@@ -52,17 +52,23 @@
 /* Definitions for ControlTask */
 osThreadId_t ControlTaskHandle;
 const osThreadAttr_t ControlTask_attributes = {
-    .name = "ControlTask", .priority = (osPriority_t)osPriorityHigh, .stack_size = 128 * 4
+  .name = "ControlTask",
+  .priority = (osPriority_t) osPriorityHigh,
+  .stack_size = 128 * 4
 };
 /* Definitions for DataAcquisition */
 osThreadId_t DataAcquisitionHandle;
 const osThreadAttr_t DataAcquisition_attributes = {
-    .name = "DataAcquisition", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128 * 4
+  .name = "DataAcquisition",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 4
 };
 /* Definitions for DataLogging */
 osThreadId_t DataLoggingHandle;
 const osThreadAttr_t DataLogging_attributes = {
-    .name = "DataLogging", .priority = (osPriority_t)osPriorityLow, .stack_size = 128 * 4
+  .name = "DataLogging",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,49 +83,49 @@ void StartTaskDataLogging(void *argument);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /**
- * @brief  FreeRTOS initialization
- * @param  None
- * @retval None
- */
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
 void MX_FREERTOS_Init(void) {
-    /* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-    /* USER CODE END Init */
+  /* USER CODE END Init */
 
-    /* USER CODE BEGIN RTOS_MUTEX */
+  /* USER CODE BEGIN RTOS_MUTEX */
     /* add mutexes, ... */
-    /* USER CODE END RTOS_MUTEX */
+  /* USER CODE END RTOS_MUTEX */
 
-    /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
     /* add semaphores, ... */
-    /* USER CODE END RTOS_SEMAPHORES */
+  /* USER CODE END RTOS_SEMAPHORES */
 
-    /* USER CODE BEGIN RTOS_TIMERS */
+  /* USER CODE BEGIN RTOS_TIMERS */
     /* start timers, add new ones, ... */
-    /* USER CODE END RTOS_TIMERS */
+  /* USER CODE END RTOS_TIMERS */
 
-    /* USER CODE BEGIN RTOS_QUEUES */
+  /* USER CODE BEGIN RTOS_QUEUES */
     /* add queues, ... */
-    /* USER CODE END RTOS_QUEUES */
+  /* USER CODE END RTOS_QUEUES */
 
-    /* Create the thread(s) */
-    /* creation of ControlTask */
-    ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
+  /* Create the thread(s) */
+  /* creation of ControlTask */
+  ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
 
-    /* creation of DataAcquisition */
-    DataAcquisitionHandle =
-        osThreadNew(StartTaskDataAcquisition, NULL, &DataAcquisition_attributes);
+  /* creation of DataAcquisition */
+  DataAcquisitionHandle = osThreadNew(StartTaskDataAcquisition, NULL, &DataAcquisition_attributes);
 
-    /* creation of DataLogging */
-    DataLoggingHandle = osThreadNew(StartTaskDataLogging, NULL, &DataLogging_attributes);
+  /* creation of DataLogging */
+  DataLoggingHandle = osThreadNew(StartTaskDataLogging, NULL, &DataLogging_attributes);
 
-    /* USER CODE BEGIN RTOS_THREADS */
+  /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
-    /* USER CODE END RTOS_THREADS */
+  /* USER CODE END RTOS_THREADS */
 
-    /* USER CODE BEGIN RTOS_EVENTS */
+  /* USER CODE BEGIN RTOS_EVENTS */
     /* add events, ... */
-    /* USER CODE END RTOS_EVENTS */
+  /* USER CODE END RTOS_EVENTS */
+
 }
 
 /* USER CODE BEGIN Header_StartControlTask */
@@ -129,16 +135,17 @@ void MX_FREERTOS_Init(void) {
  * @retval None
  */
 /* USER CODE END Header_StartControlTask */
-void StartControlTask(void *argument) {
-    /* init code for USB_Device */
-    MX_USB_Device_Init();
-    /* USER CODE BEGIN StartControlTask */
+void StartControlTask(void *argument)
+{
+  /* init code for USB_Device */
+  MX_USB_Device_Init();
+  /* USER CODE BEGIN StartControlTask */
     /* Infinite loop */
     for (;;) {
         app_ControlTask();
         osDelay(1);
     }
-    /* USER CODE END StartControlTask */
+  /* USER CODE END StartControlTask */
 }
 
 /* USER CODE BEGIN Header_StartTaskDataAcquisition */
@@ -148,14 +155,15 @@ void StartControlTask(void *argument) {
  * @retval None
  */
 /* USER CODE END Header_StartTaskDataAcquisition */
-void StartTaskDataAcquisition(void *argument) {
-    /* USER CODE BEGIN StartTaskDataAcquisition */
+void StartTaskDataAcquisition(void *argument)
+{
+  /* USER CODE BEGIN StartTaskDataAcquisition */
     /* Infinite loop */
     for (;;) {
         app_DataAcquisitionTask();
         osDelay(1);
     }
-    /* USER CODE END StartTaskDataAcquisition */
+  /* USER CODE END StartTaskDataAcquisition */
 }
 
 /* USER CODE BEGIN Header_StartTaskDataLogging */
@@ -165,16 +173,18 @@ void StartTaskDataAcquisition(void *argument) {
  * @retval None
  */
 /* USER CODE END Header_StartTaskDataLogging */
-void StartTaskDataLogging(void *argument) {
-    /* USER CODE BEGIN StartTaskDataLogging */
+void StartTaskDataLogging(void *argument)
+{
+  /* USER CODE BEGIN StartTaskDataLogging */
     /* Infinite loop */
     for (;;) {
         osDelay(1);
     }
-    /* USER CODE END StartTaskDataLogging */
+  /* USER CODE END StartTaskDataLogging */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
+

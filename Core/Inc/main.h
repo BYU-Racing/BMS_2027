@@ -71,8 +71,6 @@ void Error_Handler(void);
 #define DIG_OUT_4_GPIO_Port GPIOA
 #define DIG_OUT_5_Pin GPIO_PIN_10
 #define DIG_OUT_5_GPIO_Port GPIOA
-#define DIG_OUT_6_Pin GPIO_PIN_15
-#define DIG_OUT_6_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
