@@ -19,21 +19,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "fdcan.h"
-#include "iwdg.h"
-#include "quadspi.h"
-#include "spi.h"
-#include "usart.h"
-#include "usb_device.h"
-#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
-#include "usbd_cdc_if.h"
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
+#include "bench_app.h"
+#include "led.h"
+#include "fault.h"
 
 /* USER CODE END Includes */
 
@@ -60,7 +51,6 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -68,7 +58,6 @@ void MX_FREERTOS_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-volatile bool can_msg_received = false;
 
 /* USER CODE END 0 */
 
@@ -87,6 +76,7 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
+  led_init();
 
   /* USER CODE BEGIN Init */
 
@@ -99,25 +89,22 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_FDCAN1_Init();
-  MX_FDCAN2_Init();
-  MX_QUADSPI1_Init();
-  MX_SPI2_Init();
-  MX_UART5_Init();
-  MX_IWDG_Init();
-  MX_FDCAN3_Init();
+  /* The selected bench task configures its own isoSPI pins and SPI2.
+   * Do not initialize the BMS peripherals or watchdog here. */
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
-  MX_FREERTOS_Init();
+  if (osKernelInitialize() != osOK)
+  {
+    fault_halt();
+  }
+  bench_app_init();
 
   /* Start scheduler */
   osKernelStart();
+  fault_halt();
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -154,7 +141,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  /* Preserve the reference driver's 16 MHz CPU/PCLK1 timing (500 kHz SPI). */
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_OFF;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
   RCC_OscInitStruct.PLL.PLLN = 85;
@@ -170,16 +158,15 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }
-  HAL_RCC_MCOConfig(RCC_MCO_PG10, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
 }
 
 /* USER CODE BEGIN 4 */
@@ -216,17 +203,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-    uint8_t msg[] = "An error has occurred\r\n";
-    CDC_Transmit_FS(msg, sizeof(msg) - 1);
-
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 |
-                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_10 |
-                                  GPIO_PIN_15);
-    HAL_Delay(500);
-  }
+  fault_halt();
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT

@@ -44,17 +44,31 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-    app/Src/control.c
+    app/bench/Src/bench_app.c
+    app/bench/Src/bench_gpio.c
+    app/bench/Src/board_check.c
+    app/bench/Src/cell_test.c
+    app/bench/Src/fast_poll.c
+    app/bench/Src/fault.c
+    app/bench/Src/isospi.c
+    app/bench/Src/isospi_test.c
+    app/bench/Src/led.c
+    app/bench/Src/swo.c
+    app/bench/Src/thermistor.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    app/bench/Inc
 )
 
-# Add project symbols (macros)
+set(BMS_TEST_TASK "3" CACHE STRING "Bench test: 0 detailed, 1 fast poll, 2 link, 3 board check")
+set_property(CACHE BMS_TEST_TASK PROPERTY STRINGS 0 1 2 3)
+if(NOT BMS_TEST_TASK MATCHES "^[0-3]$")
+    message(FATAL_ERROR "BMS_TEST_TASK must be 0, 1, 2, or 3")
+endif()
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    BMS_TEST_TASK=${BMS_TEST_TASK}
     # Add user defined symbols
 )
 
@@ -66,4 +80,16 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+# Images for STM32CubeProgrammer over ST-Link/SWD or the ROM USB DFU bootloader.
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+            ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+            ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin
+    BYPRODUCTS
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin
+    VERBATIM
 )
