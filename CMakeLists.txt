@@ -1,69 +1,86 @@
 cmake_minimum_required(VERSION 3.22)
 
-#
-# This file is generated only once,
-# and is not re-generated if converter is called multiple times.
-#
-# User is free to modify the file as much as necessary
-#
-
-# Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Define the build type
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug")
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-# Set the project name
-set(CMAKE_PROJECT_NAME BMSRework)
+# Keep this before project(): your toolchain uses the project name.
+set(CMAKE_PROJECT_NAME BMS_ABA)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Enable compile command to ease indexing with e.g. clangd
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+project(${CMAKE_PROJECT_NAME} LANGUAGES C CXX ASM)
 
-# Core project settings
-project(${CMAKE_PROJECT_NAME})
-message("Build type: " ${CMAKE_BUILD_TYPE})
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
-# Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
-# Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+# Function to allow adding a whole source directory
+function(add_source_directory target directory)
+    set(module_dir "${CMAKE_CURRENT_SOURCE_DIR}/${directory}")
+
+    file(GLOB_RECURSE module_files CONFIGURE_DEPENDS
+        "${module_dir}/*.c"
+        "${module_dir}/*.cpp"
+        "${module_dir}/*.h"
+        "${module_dir}/*.hpp"
+    )
+
+    target_sources(${target} PRIVATE ${module_files})
+
+    target_include_directories(${target} PRIVATE
+        "${module_dir}"
+    )
+endfunction()
+
+# Set firmware selection variable
+set(FIRMWARE "blinky" CACHE STRING "Firmware image to build")
+
+set_property(CACHE FIRMWARE PROPERTY STRINGS
+    blinky
+    bms
+    peripheral_test
 )
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-    app/Src/control.c
-)
+if(NOT FIRMWARE MATCHES "^(blinky|bms|peripheral_test)$")
+    message(FATAL_ERROR "Unknown FIRMWARE: ${FIRMWARE}")
+endif()
 
-# Add include paths
+message(STATUS "Selected firmware: ${FIRMWARE}")
+
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    "${CMAKE_CURRENT_SOURCE_DIR}/firmware"
 )
 
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+# Collect files only from the selected firmware directory.
+add_source_directory(${CMAKE_PROJECT_NAME}
+    "firmware/${FIRMWARE}"
 )
 
-# Remove wrong libob.a library dependency when using cpp files
-list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
+# Select the supporting application/device modules.
+if(FIRMWARE STREQUAL "bms")
+    add_source_directory(${CMAKE_PROJECT_NAME} app/config)
+    add_source_directory(${CMAKE_PROJECT_NAME} app/control)
+    add_source_directory(${CMAKE_PROJECT_NAME} app/tasks)
 
-# Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
+    add_source_directory(${CMAKE_PROJECT_NAME} devices/ltc6811)
+    add_source_directory(${CMAKE_PROJECT_NAME} devices/flash_chip)
 
-    # Add user defined libraries
-)
+elseif(FIRMWARE STREQUAL "peripheral_test")
+    add_source_directory(${CMAKE_PROJECT_NAME} devices/flash_chip)
+
+    # Add your target test-runner and QuadSPI test sources here
+    # when those files exist.
+endif()
+
+# Shared board support.
+add_source_directory(${CMAKE_PROJECT_NAME} board)

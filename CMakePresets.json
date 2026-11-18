@@ -23,6 +23,27 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "Blinky",
+            "inherits": "Debug",
+            "cacheVariables": {
+                "FIRMWARE": "blinky"
+            }
+        },
+        {
+            "name": "Bms",
+            "inherits": "Debug",
+            "cacheVariables": {
+                "FIRMWARE": "bms"
+            }
+        },
+        {
+            "name": "QspiTest",
+            "inherits": "Debug",
+            "cacheVariables": {
+                "FIRMWARE": "peripheral_test"
+            }
         }
     ],
     "buildPresets": [
@@ -33,6 +54,9 @@
         {
             "name": "Release",
             "configurePreset": "Release"
-        }
+        },
+        { "name": "Blinky",   "configurePreset": "Blinky" },
+        { "name": "Bms",      "configurePreset": "Bms" },
+        { "name": "QspiTest", "configurePreset": "QspiTest" }
     ]
 }
